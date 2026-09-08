@@ -123,13 +123,15 @@ class _ExportPageState extends State<ExportPage> {
     final a = s.allocation;
     return LayoutBuilder(builder: (context, c) {
       final compact = c.maxWidth < 700;
-      final mode = AppState.isMobile ? _Mode.photos : (AppState.isWeb ? _Mode.zip : _Mode.folders);
+      final mode = s.textOnly ? _Mode.text : (AppState.isMobile ? _Mode.photos : (AppState.isWeb ? _Mode.zip : _Mode.folders));
       final subtitle = switch (mode) {
+        _Mode.text => '无图模式：按人列出号码，点右侧复制单个人的，或复制整份群公告。',
         _Mode.folders => '每人一个文件夹，只复制不移动。之后在微信里打开对应聊天，全选文件夹里的图发送即可。',
         _Mode.zip => '打包成一个 ZIP 下载，解压后每人一个文件夹。全部在浏览器里完成，不经过任何服务器。',
         _Mode.photos => '一人一组，点"保存到相册"把原图存进手机，再到微信里选图发送（记得勾"原图"）。',
       };
       Widget body() => switch (mode) {
+            _Mode.text => _textResult(s, a!),
             _Mode.photos => _saveList(s, a!),
             _Mode.zip => _zip(s, a!, compact),
             _Mode.folders => _folders(s, a!, compact),
@@ -139,14 +141,14 @@ class _ExportPageState extends State<ExportPage> {
         children: [
           PageHeader(
             index: '04',
-            title: (mode == _Mode.photos ? '分发' : '拆分') + (s.round > 1 ? ' · 第 ${s.round} 轮' : ''),
+            title: (mode == _Mode.text ? '结果' : mode == _Mode.photos ? '分发' : '拆分') + (s.round > 1 ? ' · 第 ${s.round} 轮' : ''),
             compact: compact,
             subtitle: s.round > 1 ? '只包含第 ${s.round} 轮新分出去的图，前几轮已经发过的不会重复。' : subtitle,
             actions: [SoftButton(label: _copied ? '已复制' : '复制群公告', small: compact, onPressed: a == null ? null : () => _copyAnnouncement(s))],
           ),
           if (a == null)
             const Expanded(child: EmptyNote('先完成前面三步'))
-          else if (mode == _Mode.photos || compact)
+          else if (mode == _Mode.photos || mode == _Mode.text || compact)
             Expanded(child: body())
           else
             Expanded(
@@ -162,6 +164,45 @@ class _ExportPageState extends State<ExportPage> {
         ],
       );
     });
+  }
+
+  // ---- 无图模式：按人列号码 ----
+  Widget _textResult(AppState s, Allocation a) {
+    final people = a.people.where((p) => p.got.isNotEmpty).toList();
+    return ListView(
+      children: [
+        for (final person in people)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Panel(
+              padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(person.name, style: Tone.h2.copyWith(fontSize: 20), overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 4),
+                        Text('${person.got.length} 张 · ${Report.compress(person.got)}', style: Tone.num.copyWith(fontSize: 14, color: Tone.inkSoft)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  SoftButton(label: '复制', small: true, icon: Icons.copy_rounded, onPressed: () => _copyText(s.personLine(person))),
+                ],
+              ),
+            ),
+          ),
+        if (a.unclaimed.isNotEmpty) Text('未认领：${Report.compress(a.unclaimed)}', style: Tone.bodySoft),
+        const SizedBox(height: 16),
+        const Label('群公告'),
+        const SizedBox(height: 6),
+        _announcementBox(s, height: 220),
+        _nextRoundPanel(s, a),
+        const SizedBox(height: 12),
+      ],
+    );
   }
 
   // ---- 手机：按人保存到相册 ----
@@ -372,4 +413,4 @@ class _ExportPageState extends State<ExportPage> {
   }
 }
 
-enum _Mode { folders, zip, photos }
+enum _Mode { folders, zip, photos, text }

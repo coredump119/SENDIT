@@ -65,6 +65,29 @@ void main() {
 
   testWidgets('desktop', skip: skip, (t) => render(t, const Size(1280, 820), 'desktop', true));
   testWidgets('mobile', skip: skip, (t) => render(t, const Size(390, 844), 'mobile', false));
+  testWidgets('textonly', skip: skip, (t) async {
+    AppState.desktopOverride = true;
+    await t.binding.setSurfaceSize(const Size(1280, 820));
+    t.view.physicalSize = const Size(1280, 820);
+    t.view.devicePixelRatio = 1;
+    late AppState state;
+    await t.runAsync(() async {
+      await _loadFonts();
+      state = AppState();
+      state.setManualMax(40);
+      state.setChatText(File('samples/chat_sample.txt').readAsStringSync());
+      state.parseChat();
+      state.setDefaultLimit(5);
+    });
+    Widget app() => AppScope(state: state, child: MaterialApp(debugShowCheckedModeBanner: false, theme: _themeWithCjk(), home: const Shell()));
+    for (final (stage, name) in [(Stage.images, '01_images'), (Stage.result, '03_result'), (Stage.export, '04_export')]) {
+      state.goTo(stage);
+      await t.pumpWidget(app());
+      await t.pumpAndSettle();
+      await expectLater(find.byType(Shell), matchesGoldenFile('golden/textonly_$name.png'));
+    }
+    AppState.desktopOverride = null;
+  });
   testWidgets('web', skip: skip, (t) => render(t, const Size(1280, 820), 'web', false, web: true));
 
   testWidgets('round2', skip: skip, (t) async {

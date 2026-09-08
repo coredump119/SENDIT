@@ -97,7 +97,7 @@ class _Grid extends StatelessWidget {
             itemCount: a.maxNumber,
             itemBuilder: (ctx, i) {
               final n = i + 1;
-              final id = s.images!.byNumber[n];
+              final id = s.images?.byNumber[n];
               final lockedRound = s.locked[n]?.$2;
               return _Cell(
                 n: n,
@@ -105,6 +105,7 @@ class _Grid extends StatelessWidget {
                 provider: id == null ? null : s.thumb(id, 220),
                 overridden: s.manualOverrides.containsKey(n),
                 lockedRound: lockedRound,
+                textOnly: s.textOnly,
                 onTap: lockedRound != null ? null : (pos) => _menu(ctx, s, a, n, pos),
               );
             },
@@ -148,8 +149,9 @@ class _Cell extends StatelessWidget {
   final ImageProvider? provider;
   final bool overridden;
   final int? lockedRound;
+  final bool textOnly;
   final void Function(Offset)? onTap;
-  const _Cell({required this.n, required this.owner, required this.provider, required this.overridden, required this.onTap, this.lockedRound});
+  const _Cell({required this.n, required this.owner, required this.provider, required this.overridden, required this.onTap, this.lockedRound, this.textOnly = false});
 
   @override
   Widget build(BuildContext context) {
@@ -183,8 +185,10 @@ class _Cell extends StatelessWidget {
                         opacity: owner == null ? 0.35 : 1,
                         child: Image(image: provider!, fit: BoxFit.cover, filterQuality: FilterQuality.low),
                       )
+                    else if (!textOnly)
+                      Center(child: Text('缺图', style: Tone.monoSmall))
                     else
-                      Center(child: Text('缺图', style: Tone.monoSmall)),
+                      Center(child: Text('$n', style: Tone.numeral.copyWith(fontSize: 26, color: owner == null ? Tone.inkMute : Tone.inkSoft))),
                     if (overridden)
                       Positioned(
                         right: 0,

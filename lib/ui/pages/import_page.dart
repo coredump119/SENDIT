@@ -77,7 +77,7 @@ class _ImportPageState extends State<ImportPage> {
               child: Panel(
                 fill: Tone.cream,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                child: Text('还没导入图片，先完成第 01 步，编号范围才能确定。', style: Tone.body),
+                child: Text('还没确定编号范围，先在第 01 步选图片或填编号总数。', style: Tone.body),
               ),
             ),
           Expanded(

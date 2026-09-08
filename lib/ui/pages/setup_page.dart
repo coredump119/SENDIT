@@ -17,6 +17,45 @@ class SetupPage extends StatefulWidget {
 
 class _SetupPageState extends State<SetupPage> {
   bool _dragging = false;
+  final _maxCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _maxCtrl.dispose();
+    super.dispose();
+  }
+
+  /// 无图模式入口：编号总数 + 开始
+  Widget _textOnlyEntry(AppState s, {bool compact = false}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text('不需要图片？只用聊天记录算归属', style: Tone.bodySoft),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('编号 1 到', style: Tone.body),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 72,
+              child: TextField(
+                controller: _maxCtrl,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                style: Tone.num,
+                decoration: const InputDecoration(hintText: '40'),
+                onSubmitted: (_) => s.setManualMax(int.tryParse(_maxCtrl.text.trim())),
+              ),
+            ),
+            const SizedBox(width: 10),
+            SoftButton(label: '无图开始', small: true, onPressed: () => s.setManualMax(int.tryParse(_maxCtrl.text.trim()))),
+          ],
+        ),
+      ],
+    );
+  }
 
   /// 安卓：应用内相册（系统选择器在 Android ≤12 / 无 GMS 机型上会变成文件浏览器）；其他平台走系统选择
   Future<void> _pick(AppState s) async {
@@ -39,7 +78,7 @@ class _SetupPageState extends State<SetupPage> {
         children: [
           PageHeader(
             index: '01',
-            title: '图片',
+            title: s.textOnly ? '编号' : '图片',
             compact: compact,
             subtitle: AppState.isMobile
                 ? '从相册多选，按选择顺序自动编号；长按缩略图拖动可调整顺序。'
@@ -59,7 +98,7 @@ class _SetupPageState extends State<SetupPage> {
                 setState(() => _dragging = false);
                 s.handleDrop(await ops.fromDrop(d.files));
               },
-              child: ix == null ? _empty(s, compact) : _loaded(s, ix, compact),
+              child: s.textOnly ? _textOnlyLoaded(s, compact) : (ix == null ? _empty(s, compact) : _loaded(s, ix, compact)),
             ),
           ),
         ],
@@ -99,9 +138,64 @@ class _SetupPageState extends State<SetupPage> {
                 SoftButton(label: mobile ? '从相册选择' : '选择图片', primary: !AppState.canPickFolder, onPressed: () => _pick(s)),
               ],
             ),
+            const SizedBox(height: 28),
+            const SizedBox(width: 120, child: HairRule()),
+            const SizedBox(height: 18),
+            _textOnlyEntry(s, compact: compact),
           ],
         ),
       ),
+    );
+  }
+
+  /// 无图模式已开启
+  Widget _textOnlyLoaded(AppState s, bool compact) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          spacing: compact ? 22 : 34,
+          runSpacing: 12,
+          children: [
+            InlineStat(label: '模式', value: '无图'),
+            InlineStat(label: '编号范围', value: '1–${s.manualMax}'),
+          ],
+        ),
+        const SizedBox(height: 12),
+        const HairRule(),
+        const SizedBox(height: 16),
+        Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('只用聊天记录算归属', style: Tone.h3),
+              const SizedBox(height: 6),
+              Text('不选图片，编号 1 到 ${s.manualMax}。后面的解析、归属、第二轮都一样，最后一页会按人列出号码，直接复制发群。', style: Tone.bodySoft),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text('改总数', style: Tone.body),
+                  SizedBox(
+                    width: 72,
+                    child: TextField(
+                      controller: _maxCtrl..text = '${s.manualMax}',
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      style: Tone.num,
+                      onSubmitted: (_) => s.setManualMax(int.tryParse(_maxCtrl.text.trim())),
+                    ),
+                  ),
+                  SoftButton(label: '应用', small: true, onPressed: () => s.setManualMax(int.tryParse(_maxCtrl.text.trim()))),
+                  SoftButton(label: '改用图片', small: true, onPressed: () => s.setManualMax(null)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

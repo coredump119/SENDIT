@@ -9,12 +9,12 @@ import 'scope.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
-const _steps = [
-  (Stage.images, '01', '图片'),
-  (Stage.chat, '02', '聊天'),
-  (Stage.result, '03', '归属'),
-  (Stage.export, '04', '拆分'),
-];
+List<(Stage, String, String)> _stepsFor(AppState s) => [
+      (Stage.images, '01', s.textOnly ? '编号' : '图片'),
+      (Stage.chat, '02', '聊天'),
+      (Stage.result, '03', '归属'),
+      (Stage.export, '04', s.textOnly ? '结果' : (AppState.isMobile ? '分发' : '拆分')),
+    ];
 
 bool _done(AppState s, Stage st) => switch (st) {
       Stage.images => s.imagesReady,
@@ -99,7 +99,7 @@ class _TopBar extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                for (final (st, idx, _) in _steps)
+                for (final (st, idx, _) in _stepsFor(s))
                   GestureDetector(
                     onTap: () => s.goTo(st),
                     child: AnimatedContainer(
@@ -138,7 +138,7 @@ class _Rail extends StatelessWidget {
             const SizedBox(height: 4),
             const Label('扣号分发'),
             const SizedBox(height: 44),
-            for (final (st, idx, name) in _steps)
+            for (final (st, idx, name) in _stepsFor(s))
               _RailItem(idx: idx, name: name, active: s.stage == st, done: _done(s, st), onTap: () => s.goTo(st)),
             const Spacer(),
             if (s.images != null) ...[
@@ -204,8 +204,8 @@ class _Footer extends StatelessWidget {
       Stage.export => false,
     };
     final hint = switch (s.stage) {
-      Stage.images => s.images == null ? '等待图片' : (s.imagesReady ? '${s.maxNumber} 个编号就绪' : '编号有冲突'),
-      Stage.chat => s.messages.isEmpty ? '等待粘贴' : (s.resultReady ? '已解析 ${s.messages.length} 条' : '缺少图片编号范围'),
+      Stage.images => s.textOnly ? '无图 · 编号 1–${s.maxNumber}' : (s.images == null ? '等待图片或填编号总数' : (s.imagesReady ? '${s.maxNumber} 个编号就绪' : '编号有冲突')),
+      Stage.chat => s.messages.isEmpty ? '等待粘贴' : (s.resultReady ? '已解析 ${s.messages.length} 条' : '缺少编号范围'),
       Stage.result => s.allocation == null ? '' : '${s.allocation!.people.length} 人 · 未认领 ${s.allocation!.unclaimed.length}',
       Stage.export => s.exportSummary != null || s.zipDone ? '完成' : (s.saved.isEmpty ? '' : '已保存 ${s.saved.length} 人'),
     };

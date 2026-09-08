@@ -28,6 +28,9 @@ class AppState extends ChangeNotifier {
   final Map<String, DateTime> _mtimes = {};
   final Map<String, String> _names = {};
   ImageIndex? images;
+  /// 无图模式：只填编号总数，不选图片
+  int? manualMax;
+  bool get textOnly => images == null && manualMax != null;
   NumberRule numberRule = NumberRule.firstNumber;
   SortMode sortMode = SortMode.name;
 
@@ -72,7 +75,7 @@ class AppState extends ChangeNotifier {
   int get lockedCount => locked.length;
   bool get canCancelRound => _history.isNotEmpty;
 
-  int get maxNumber => images?.maxNumber ?? 0;
+  int get maxNumber => images?.maxNumber ?? manualMax ?? 0;
 
   Rules get rules => Rules(
         maxNumber: maxNumber,
@@ -89,7 +92,7 @@ class AppState extends ChangeNotifier {
         ignoredOrders: Set.of(ignoredOrders),
       );
 
-  bool get imagesReady => images != null && images!.ok;
+  bool get imagesReady => (images != null && images!.ok) || (images == null && (manualMax ?? 0) > 0);
   bool get chatReady => parsed.isNotEmpty;
   bool get resultReady => allocation != null;
   bool isEarly(RawMessage m) => rules.isEarly(m);
@@ -109,7 +112,21 @@ class AppState extends ChangeNotifier {
   }
 
   // ---- 图片 ----
+  /// 无图模式：设置编号总数（1..n）
+  void setManualMax(int? n) {
+    manualMax = (n == null || n <= 0) ? null : n.clamp(1, 9999);
+    if (manualMax != null) {
+      imageDir = null;
+      sourcePaths = [];
+      images = null;
+    }
+    _invalidate();
+    _reparse();
+    notifyListeners();
+  }
+
   Future<void> loadFolder(String dir) async {
+    manualMax = null;
     imageDir = dir;
     _setSources(await ops.listFolder(dir));
     _applySort();
@@ -119,6 +136,7 @@ class AppState extends ChangeNotifier {
   /// 多选 / 拖入的一批图：顺序即选择顺序，默认按顺序编号
   void loadPicked(List<PickedImage> picked) {
     if (picked.isEmpty) return;
+    manualMax = null;
     imageDir = null;
     numberRule = NumberRule.sequential;
     _setSources(picked);
@@ -264,6 +282,7 @@ class AppState extends ChangeNotifier {
 
   /// 新批次：全部清空
   void newBatch() {
+    manualMax = null;
     imageDir = null;
     sourcePaths = [];
     images = null;
@@ -469,6 +488,9 @@ class AppState extends ChangeNotifier {
   }
 
   String get announcement => allocation == null ? '' : Report.announcement(allocation!, round: round);
+
+  /// "张三：1, 3, 5"
+  String personLine(PersonResult p) => '${p.name}：${Report.compress(p.got)}';
 }
 
 /// 自然排序：img2 < img10
