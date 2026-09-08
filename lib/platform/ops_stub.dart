@@ -1,4 +1,6 @@
 import 'package:file_selector/file_selector.dart' show XFile;
+import 'dart:typed_data';
+
 import 'package:flutter/widgets.dart';
 
 import '../core/core.dart';
@@ -20,3 +22,5 @@ Future<void> downloadZip({required Allocation allocation, required ImageIndex im
 Future<int> saveToPhotos(PersonResult person, ImageIndex images, {String? album, bool rename = true}) => throw UnsupportedError('stub');
 Future<void> revealFolder(String path) async {}
 String? defaultOutputDir(String? imageDir) => null;
+Future<Uint8List> readBytes(String id) => throw UnsupportedError('stub');
+Future<String?> saveImageBytes(Uint8List bytes, String name, {String? dir}) => throw UnsupportedError('stub');

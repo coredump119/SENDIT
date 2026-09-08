@@ -103,3 +103,18 @@ List<int> _encodeUtf8(String s) {
 Future<int> saveToPhotos(PersonResult person, ImageIndex images, {String? album, bool rename = true}) => throw UnsupportedError('网页版不支持保存到相册');
 Future<void> revealFolder(String path) async {}
 String? defaultOutputDir(String? imageDir) => null;
+
+Future<Uint8List> readBytes(String id) async => _store[id]!;
+
+Future<String?> saveImageBytes(Uint8List bytes, String name, {String? dir}) async {
+  final blob = web.Blob([bytes.toJS].toJS, web.BlobPropertyBag(type: name.endsWith('.png') ? 'image/png' : 'image/jpeg'));
+  final url = web.URL.createObjectURL(blob);
+  final a = web.HTMLAnchorElement()
+    ..href = url
+    ..download = name;
+  web.document.body!.append(a);
+  a.click();
+  a.remove();
+  web.URL.revokeObjectURL(url);
+  return null;
+}

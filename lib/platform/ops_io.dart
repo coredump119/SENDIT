@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/widgets.dart';
@@ -132,3 +133,18 @@ Future<void> revealFolder(String path) async {
 }
 
 String? defaultOutputDir(String? imageDir) => imageDir == null ? null : p.join(imageDir, '_分发');
+
+Future<Uint8List> readBytes(String id) => File(id).readAsBytes();
+
+/// 保存生成的图片：桌面写入 [dir]，手机存相册。返回文件路径（手机为 null）。
+Future<String?> saveImageBytes(Uint8List bytes, String name, {String? dir}) async {
+  if (isMobile) {
+    await Gal.putImageBytes(bytes, name: name.replaceAll(RegExp(r'\.(jpe?g|png)$'), ''));
+    return null;
+  }
+  final d = Directory(dir ?? p.join(Directory.systemTemp.path, 'sendit'));
+  await d.create(recursive: true);
+  final f = File(p.join(d.path, name));
+  await f.writeAsBytes(bytes);
+  return f.path;
+}

@@ -43,14 +43,7 @@ class Report {
         sb.writeln('  ${p.name}：${compress(p.droppedByLimit)}');
       }
     }
-    final lost = a.people.where((p) => p.lostTo.isNotEmpty).toList();
-    if (lost.isNotEmpty) {
-      sb.writeln('—');
-      sb.writeln('已被先扣走：');
-      for (final p in lost) {
-        sb.writeln('  ${p.name}：${compress(p.lostTo.map((l) => l.number))}');
-      }
-    }
+    // "已被先扣走"不再写进公告：群里没人需要，反而要手动删
     final un = a.unclaimed;
     if (un.isNotEmpty) {
       sb.writeln('—');

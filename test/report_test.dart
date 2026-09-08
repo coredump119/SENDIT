@@ -18,7 +18,7 @@ void main() {
     expect(Report.fileNameForNumber(5, 'x.jpg', 120), '005.jpg');
   });
 
-  test('announcement', () {
+  test('announcement（不含已被先扣走）', () {
     const parser = NumberParser(6);
     final ms = [
       parser.parse(const RawMessage(sender: 'A', time: null, order: 0, text: '1-4')),
@@ -31,9 +31,6 @@ B：5
 —
 超出限量、未分配：
   A：4
-—
-已被先扣走：
-  B：2
 —
 未认领：4, 6''');
   });

@@ -58,3 +58,6 @@ DEV.md
 PHASES.md
 docs/TESTFLIGHT.md
 docs/PORTFOLIO.md
+
+# Windows 安装包输出
+dist/

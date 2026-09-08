@@ -86,3 +86,18 @@ flutter test
 ## License
 
 [MIT](LICENSE)
+
+## 下载 / Download
+
+- **Windows**：到 [Releases](../../releases/latest) 下载 `SENDIT-x.y.z-windows-setup.exe`（安装版）或 `-windows-portable.zip`（解压即用）。首次运行 SmartScreen 可能提示"未知发布者"，点"更多信息 → 仍要运行"即可（没有购买代码签名证书）。
+- **网页版**：https://sendit-73d.pages.dev （任何浏览器，纯本地计算）
+- **iOS**：TestFlight（联系作者）
+- **Android**：Releases 页下载 APK
+- **macOS**：`flutter build macos --release` 自行编译，或联系作者
+
+### 发布流程（维护者）
+```bash
+# 改 pubspec.yaml 的 version，然后：
+git tag v0.9.1 && git push origin v0.9.1
+```
+GitHub Actions 会自动编译 Windows 安装包和 zip，并创建 Release。

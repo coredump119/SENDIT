@@ -43,6 +43,7 @@ dependencies:
   web: ^1.1.1
   cross_file: ^0.3.5+5
   photo_manager: ^3.12.0
+  image: ^4.9.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -108,6 +109,10 @@ flutter:
 # 生成图标：dart run flutter_launcher_icons
 # 换图标：改 assets/icon/icon.png（1024 不透明）和 icon_mac.png（圆角 + 透明边距），再跑一次
 flutter_launcher_icons:
+  windows:
+    generate: true
+    image_path: "assets/icon/icon.png"
+    icon_size: 256
   image_path: "assets/icon/icon.png"
   android: true
   ios: true

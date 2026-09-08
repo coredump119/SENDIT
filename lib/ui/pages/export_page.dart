@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/core.dart';
 import '../app_state.dart';
+import '../collage_dialog.dart';
 import '../scope.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -61,6 +62,10 @@ class _ExportPageState extends State<ExportPage> {
                 children: [
                   SoftButton(label: '取消', small: true, onPressed: () => Navigator.of(ctx).pop(false)),
                   const SizedBox(width: 8),
+                  if (!s.textOnly) ...[
+                    SoftButton(label: '生成拼图', small: true, onPressed: () => showCollageDialog(ctx, s)),
+                    const SizedBox(width: 8),
+                  ],
                   SoftButton(label: '复制群消息', small: true, onPressed: () => _copyText(s.nextRoundMessage)),
                   const SizedBox(width: 8),
                   SoftButton(label: '开启', small: true, primary: true, onPressed: () => Navigator.of(ctx).pop(true)),
@@ -96,6 +101,10 @@ class _ExportPageState extends State<ExportPage> {
               ),
             ),
             const SizedBox(width: 10),
+            if (!s.textOnly) ...[
+              SoftButton(label: '剩余拼图', small: true, icon: Icons.grid_view_rounded, onPressed: () => showCollageDialog(context, s)),
+              const SizedBox(width: 8),
+            ],
             SoftButton(label: '开启第 ${s.round + 1} 轮', small: true, primary: true, icon: Icons.replay_rounded, onPressed: () => _confirmNextRound(s)),
           ],
         ),
