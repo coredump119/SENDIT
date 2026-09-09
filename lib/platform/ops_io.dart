@@ -35,18 +35,28 @@ Future<List<PickedImage>> listFolder(String dir) async {
   return out;
 }
 
-Future<List<PickedImage>> pickImages() async {
+Future<List<PickedImage>> pickImages({void Function(int done, int total)? onProgress}) async {
+  final List<XFile> files;
   if (isMobile) {
-    final files = await ImagePicker().pickMultiImage();
-    return [for (final f in files) await _picked(f.path)];
+    // requestFullMetadata=false：不去查相册元数据，选大批图明显更快，也不额外要权限
+    files = await ImagePicker().pickMultiImage(requestFullMetadata: false);
+    onProgress?.call(0, files.length);
+    // 选择器给的是临时副本，修改时间没有意义，跳过 stat
+    return [for (final f in files) PickedImage(id: f.path, name: f.name)];
+  } else {
+    files = await openFiles(acceptedTypeGroups: [
+      XTypeGroup(label: '图片', extensions: ImageIndexer.extensions.toList()),
+    ]);
   }
-  final files = await openFiles(acceptedTypeGroups: [
-    XTypeGroup(label: '图片', extensions: ImageIndexer.extensions.toList()),
-  ]);
-  return [for (final f in files) await _picked(f.path)];
+  final out = <PickedImage>[];
+  for (var i = 0; i < files.length; i++) {
+    out.add(await _picked(files[i].path));
+    onProgress?.call(i + 1, files.length);
+  }
+  return out;
 }
 
-Future<DropResult> fromDrop(List<XFile> files) async {
+Future<DropResult> fromDrop(List<XFile> files, {void Function(int done, int total)? onProgress}) async {
   if (files.isEmpty) return const DropResult();
   if (files.length == 1 && FileSystemEntity.isDirectorySync(files.first.path)) {
     return DropResult(folder: files.first.path);

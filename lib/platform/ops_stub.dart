@@ -14,8 +14,8 @@ bool get canPickFolder => false;
 
 Future<String?> pickFolder() async => null;
 Future<List<PickedImage>> listFolder(String dir) async => [];
-Future<List<PickedImage>> pickImages() async => [];
-Future<DropResult> fromDrop(List<XFile> files) async => const DropResult();
+Future<List<PickedImage>> pickImages({void Function(int done, int total)? onProgress}) async => [];
+Future<DropResult> fromDrop(List<XFile> files, {void Function(int done, int total)? onProgress}) async => const DropResult();
 ImageProvider imageProvider(String id) => throw UnsupportedError('stub');
 Future<ExportSummary> exportFolders({required Allocation allocation, required ImageIndex images, required String outputDir, bool rename = true, void Function(int, int)? onProgress}) => throw UnsupportedError('stub');
 Future<void> downloadZip({required Allocation allocation, required ImageIndex images, bool rename = true, String zipName = 'sendit.zip'}) => throw UnsupportedError('stub');

@@ -28,6 +28,7 @@ class _GalleryPickerPageState extends State<GalleryPickerPage> {
   final Map<String, Uint8List> _thumbs = {};
   bool _loading = true;
   bool _finishing = false;
+  int _finishDone = 0;
   int _total = 0;
 
   @override
@@ -85,13 +86,18 @@ class _GalleryPickerPageState extends State<GalleryPickerPage> {
   }
 
   Future<void> _finish() async {
-    setState(() => _finishing = true);
+    setState(() {
+      _finishing = true;
+      _finishDone = 0;
+    });
     final out = <PickedImage>[];
     for (final a in _selected) {
       final f = await a.originFile ?? await a.file;
-      if (f == null) continue;
-      final name = a.title ?? f.path.split('/').last;
-      out.add(PickedImage(id: f.path, name: name, mtime: a.modifiedDateTime));
+      if (f != null) {
+        final name = a.title ?? f.path.split('/').last;
+        out.add(PickedImage(id: f.path, name: name, mtime: a.modifiedDateTime));
+      }
+      if (mounted) setState(() => _finishDone++);
     }
     if (!mounted) return;
     Navigator.of(context).pop(out);
@@ -113,7 +119,7 @@ class _GalleryPickerPageState extends State<GalleryPickerPage> {
                   Expanded(child: _albumSelector()),
                   const SizedBox(width: 10),
                   SoftButton(
-                    label: _finishing ? '准备中…' : '完成 (${_selected.length})',
+                    label: _finishing ? '读取 $_finishDone/${_selected.length}' : '完成 (${_selected.length})',
                     small: true,
                     primary: true,
                     onPressed: _selected.isEmpty || _finishing ? null : _finish,

@@ -33,15 +33,28 @@ Future<PickedImage> _register(XFile f) async {
 Future<String?> pickFolder() async => null;
 Future<List<PickedImage>> listFolder(String dir) async => [];
 
-Future<List<PickedImage>> pickImages() async {
+Future<List<PickedImage>> pickImages({void Function(int done, int total)? onProgress}) async {
   final files = await openFiles(acceptedTypeGroups: [
     XTypeGroup(label: '图片', extensions: ImageIndexer.extensions.toList(), mimeTypes: const ['image/*']),
   ]);
-  return [for (final f in files) if (ImageIndexer.isImage(f.name)) await _register(f)];
+  final imgs = files.where((f) => ImageIndexer.isImage(f.name)).toList();
+  final out = <PickedImage>[];
+  for (var i = 0; i < imgs.length; i++) {
+    out.add(await _register(imgs[i]));
+    onProgress?.call(i + 1, imgs.length);
+  }
+  return out;
 }
 
-Future<DropResult> fromDrop(List<XFile> files) async =>
-    DropResult(images: [for (final f in files) if (ImageIndexer.isImage(f.name)) await _register(f)]);
+Future<DropResult> fromDrop(List<XFile> files, {void Function(int done, int total)? onProgress}) async {
+  final out = <PickedImage>[];
+  final imgs = files.where((f) => ImageIndexer.isImage(f.name)).toList();
+  for (var i = 0; i < imgs.length; i++) {
+    out.add(await _register(imgs[i]));
+    onProgress?.call(i + 1, imgs.length);
+  }
+  return DropResult(images: out);
+}
 
 ImageProvider imageProvider(String id) => MemoryImage(_store[id]!);
 

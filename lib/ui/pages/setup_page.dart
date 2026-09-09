@@ -1,8 +1,9 @@
+import 'dart:async';
+
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/core.dart';
-import '../../platform/ops.dart' as ops;
 import '../app_state.dart';
 import '../scope.dart';
 import '../theme.dart';
@@ -61,7 +62,7 @@ class _SetupPageState extends State<SetupPage> {
   Future<void> _pick(AppState s) async {
     if (AppState.isAndroid) {
       final picked = await GalleryPickerPage.open(context);
-      if (picked != null && picked.isNotEmpty) s.loadPicked(picked);
+      if (picked != null && picked.isNotEmpty) await s.importPicked(picked);
     } else {
       await s.pickImages();
     }
@@ -94,11 +95,17 @@ class _SetupPageState extends State<SetupPage> {
             child: DropTarget(
               onDragEntered: (_) => setState(() => _dragging = true),
               onDragExited: (_) => setState(() => _dragging = false),
-              onDragDone: (d) async {
+              onDragDone: (d) {
                 setState(() => _dragging = false);
-                s.handleDrop(await ops.fromDrop(d.files));
+                s.handleDrop(d.files);
               },
-              child: s.textOnly ? _textOnlyLoaded(s, compact) : (ix == null ? _empty(s, compact) : _loaded(s, ix, compact)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (s.importing) ...[_ImportBar(s: s), const SizedBox(height: 12)],
+                  Expanded(child: s.textOnly ? _textOnlyLoaded(s, compact) : (ix == null ? _empty(s, compact) : _loaded(s, ix, compact))),
+                ],
+              ),
             ),
           ),
         ],
@@ -321,6 +328,69 @@ class _Thumb extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 导入中的提示条：纸色 / 细线风格。等待系统相册时用每 500ms 变一次的省略号表示"活着"，
+/// 不用高帧率动画（之前的转圈会抢主线程，拖慢 iOS 导出）。
+class _ImportBar extends StatefulWidget {
+  final AppState s;
+  const _ImportBar({required this.s});
+  @override
+  State<_ImportBar> createState() => _ImportBarState();
+}
+
+class _ImportBarState extends State<_ImportBar> {
+  Timer? _timer;
+  int _dots = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+      if (mounted) setState(() => _dots = _dots % 3 + 1);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.s;
+    final hasTotal = s.importTotal > 0;
+    final note = hasTotal ? s.importNote : '${s.importNote}${'·' * _dots}';
+    return Panel(
+      fill: Tone.cream,
+      border: Colors.transparent,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Label('导入中'),
+              const SizedBox(width: 12),
+              Expanded(child: Text(note, style: Tone.body)),
+              if (hasTotal) Text('${s.importDone} / ${s.importTotal}', style: Tone.num.copyWith(color: Tone.inkSoft)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: hasTotal ? s.importDone / s.importTotal : 0,
+              minHeight: 4,
+              backgroundColor: Tone.hairSoft,
+              color: Tone.ink,
+            ),
+          ),
+        ],
       ),
     );
   }

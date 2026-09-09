@@ -2,6 +2,8 @@ import 'package:flutter/widgets.dart';
 import 'package:path/path.dart' as p;
 
 import '../core/core.dart';
+import 'package:file_selector/file_selector.dart' show XFile;
+
 import '../platform/ops.dart' as ops;
 import '../platform/picked.dart';
 
@@ -28,6 +30,11 @@ class AppState extends ChangeNotifier {
   final Map<String, DateTime> _mtimes = {};
   final Map<String, String> _names = {};
   ImageIndex? images;
+  /// 导入进度（选图 / 读取时给用户看，避免以为手机卡住）
+  bool importing = false;
+  int importDone = 0;
+  int importTotal = 0;
+  String importNote = '';
   /// 无图模式：只填编号总数，不选图片
   int? manualMax;
   bool get textOnly => images == null && manualMax != null;
@@ -143,18 +150,76 @@ class AppState extends ChangeNotifier {
     _reindex();
   }
 
-  Future<void> pickImages() async => loadPicked(await ops.pickImages());
+  Future<void> pickImages() async {
+    _beginImport(isMobile ? '正在从相册读取，大图较多时需要几秒' : '正在读取…');
+    try {
+      final picked = await ops.pickImages(onProgress: _importProgress);
+      _importNote('正在整理 ${picked.length} 张…');
+      loadPicked(picked);
+    } finally {
+      _endImport();
+    }
+  }
+
+  /// 外部（如安卓应用内相册）已选好文件时调用
+  Future<void> importPicked(List<PickedImage> picked) async {
+    _beginImport('正在整理 ${picked.length} 张…');
+    try {
+      await Future<void>.delayed(const Duration(milliseconds: 16)); // 让进度先画出来
+      loadPicked(picked);
+    } finally {
+      _endImport();
+    }
+  }
+
+  void _beginImport(String note) {
+    importing = true;
+    importDone = 0;
+    importTotal = 0;
+    importNote = note;
+    notifyListeners();
+  }
+
+  DateTime _lastProgressNotify = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// 节流：最多每 80ms 通知一次，避免大批量时反复重建页面
+  void _importProgress(int done, int total) {
+    importDone = done;
+    importTotal = total;
+    importNote = '正在读取 $done / $total';
+    final now = DateTime.now();
+    if (done == total || now.difference(_lastProgressNotify).inMilliseconds > 80) {
+      _lastProgressNotify = now;
+      notifyListeners();
+    }
+  }
+
+  void _importNote(String n) {
+    importNote = n;
+    notifyListeners();
+  }
+
+  void _endImport() {
+    importing = false;
+    notifyListeners();
+  }
 
   Future<void> pickFolder() async {
     final dir = await ops.pickFolder();
     if (dir != null) await loadFolder(dir);
   }
 
-  Future<void> handleDrop(DropResult r) async {
-    if (r.folder != null) {
-      await loadFolder(r.folder!);
-    } else {
-      loadPicked(r.images);
+  Future<void> handleDrop(List<XFile> files) async {
+    _beginImport('正在读取拖入的文件…');
+    try {
+      final r = await ops.fromDrop(files, onProgress: _importProgress);
+      if (r.folder != null) {
+        await loadFolder(r.folder!);
+      } else {
+        loadPicked(r.images);
+      }
+    } finally {
+      _endImport();
     }
   }
 
