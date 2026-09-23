@@ -8,13 +8,59 @@ import '../core/core.dart';
 import '../platform/ops.dart' as ops;
 import 'theme.dart';
 
+/// 读好的图：尺寸 + 原始字节，改设置重排时复用
+class CollageSource {
+  final List<CollageItem> items;
+  final Map<int, Uint8List> bytesOf;
+  const CollageSource(this.items, this.bytesOf);
+}
+
 /// 把一组编号图片渲染成带编号的拼图（等高行排版），输出 JPEG 页。
 class CollageBuilder {
   final CollageLayout layout;
   const CollageBuilder({this.layout = const CollageLayout()});
 
-  static const _decodeLongEdge = 1400;
+  static const _decodeLongEdge = 1000;
 
+  /// 一次性读取 + 量尺寸；之后改排版设置只需 [render]，不用再读图
+  Future<CollageSource> prepare({
+    required ImageIndex images,
+    required List<int> numbers,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    final items = <CollageItem>[];
+    final bytesOf = <int, Uint8List>{};
+    var done = 0;
+    for (final n in numbers) {
+      final id = images.byNumber[n];
+      if (id == null) continue;
+      final bytes = await ops.readBytes(id);
+      final size = await _measure(bytes);
+      items.add(CollageItem(number: n, width: size.$1.toDouble(), height: size.$2.toDouble()));
+      bytesOf[n] = bytes;
+      onProgress?.call(++done, numbers.length);
+    }
+    return CollageSource(items, bytesOf);
+  }
+
+  /// 按当前 [layout] 排版并逐页渲染（长边 ≤ 1000，画完即释放）
+  Future<List<Uint8List>> render(CollageSource src, {required String title, bool watermark = true}) async {
+    final pages = layout.paginate(src.items);
+    final out = <Uint8List>[];
+    for (var i = 0; i < pages.length; i++) {
+      final decoded = <int, ui.Image>{};
+      for (final pl in pages[i].items) {
+        decoded[pl.number] = await _decode(src.bytesOf[pl.number]!);
+      }
+      out.add(await _renderPage(pages[i], decoded, title: title, page: i + 1, pageCount: pages.length, total: src.items.length, watermark: watermark));
+      for (final im in decoded.values) {
+        im.dispose();
+      }
+    }
+    return out;
+  }
+
+  /// 兼容旧调用：prepare + render
   Future<List<Uint8List>> build({
     required ImageIndex images,
     required List<int> numbers,
@@ -22,40 +68,42 @@ class CollageBuilder {
     bool watermark = true,
     void Function(int done, int total)? onProgress,
   }) async {
-    // 1. 解码（限制长边，控制内存）
-    final decoded = <int, ui.Image>{};
-    final items = <CollageItem>[];
-    var done = 0;
-    for (final n in numbers) {
-      final id = images.byNumber[n];
-      if (id == null) continue;
-      final bytes = await ops.readBytes(id);
-      final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
-      final codec = await ui.instantiateImageCodecWithSize(
-        buffer,
-        getTargetSize: (w, h) {
-          final long = w > h ? w : h;
-          if (long <= _decodeLongEdge) return ui.TargetImageSize(width: w, height: h);
-          final k = _decodeLongEdge / long;
-          return ui.TargetImageSize(width: (w * k).round(), height: (h * k).round());
-        },
-      );
-      final frame = await codec.getNextFrame();
-      decoded[n] = frame.image;
-      items.add(CollageItem(number: n, width: frame.image.width.toDouble(), height: frame.image.height.toDouble()));
-      onProgress?.call(++done, numbers.length);
-    }
+    final src = await prepare(images: images, numbers: numbers, onProgress: onProgress);
+    return render(src, title: title, watermark: watermark);
+  }
 
-    // 2. 排版 + 绘制
-    final pages = layout.paginate(items);
-    final out = <Uint8List>[];
-    for (var i = 0; i < pages.length; i++) {
-      out.add(await _renderPage(pages[i], decoded, title: title, page: i + 1, pageCount: pages.length, total: items.length, watermark: watermark));
-    }
-    for (final im in decoded.values) {
-      im.dispose();
-    }
-    return out;
+  Future<(int, int)> _measure(Uint8List bytes) async {
+    var w = 0, h = 0;
+    final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+    final codec = await ui.instantiateImageCodecWithSize(
+      buffer,
+      getTargetSize: (iw, ih) {
+        w = iw;
+        h = ih;
+        final k = 8 / (iw > ih ? iw : ih);
+        return ui.TargetImageSize(width: (iw * k).ceil().clamp(1, iw), height: (ih * k).ceil().clamp(1, ih));
+      },
+    );
+    final frame = await codec.getNextFrame();
+    frame.image.dispose();
+    codec.dispose();
+    return (w, h);
+  }
+
+  Future<ui.Image> _decode(Uint8List bytes) async {
+    final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+    final codec = await ui.instantiateImageCodecWithSize(
+      buffer,
+      getTargetSize: (w, h) {
+        final long = w > h ? w : h;
+        if (long <= _decodeLongEdge) return ui.TargetImageSize(width: w, height: h);
+        final k = _decodeLongEdge / long;
+        return ui.TargetImageSize(width: (w * k).round(), height: (h * k).round());
+      },
+    );
+    final frame = await codec.getNextFrame();
+    codec.dispose(); // instantiateImageCodecWithSize 已接管 buffer，不能再手动 dispose
+    return frame.image;
   }
 
   Future<Uint8List> _renderPage(CollagePage pg, Map<int, ui.Image> decoded,

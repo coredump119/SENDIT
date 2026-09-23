@@ -149,6 +149,23 @@ class _GalleryPickerPageState extends State<GalleryPickerPage> {
 
   Widget _albumSelector() {
     if (_albums.isEmpty) return Text('相册', style: Tone.h3);
+    final limited = _perm == PermissionState.limited;
+    if (limited) {
+      return Row(
+        children: [
+          Expanded(child: _albumDropdown()),
+          const SizedBox(width: 8),
+          SoftButton(label: '管理可见照片', small: true, onPressed: () async {
+            await PhotoManager.presentLimited();
+            await _init();
+          }),
+        ],
+      );
+    }
+    return _albumDropdown();
+  }
+
+  Widget _albumDropdown() {
     return Container(
       height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 12),

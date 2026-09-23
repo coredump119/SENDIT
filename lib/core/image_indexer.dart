@@ -70,7 +70,11 @@ class ImageIndexer {
     var seq = 0;
     for (final p in paths) {
       final name = nameOf(p);
-      if (!isImage(name)) continue;
+      // 按顺序模式的来源是相册 / 选择器：名字可能没有扩展名（iOS 相册的 title），
+      // 只在"有扩展名且明显不是图片"时才跳过；文件名模式仍严格按扩展名过滤
+      final hasExt = name.contains('.') && name.lastIndexOf('.') < name.length - 1;
+      final skip = rule == NumberRule.sequential ? (hasExt && !isImage(name)) : !isImage(name);
+      if (skip) continue;
       final n = rule == NumberRule.sequential ? ++seq : numberOf(name);
       final img = IndexedImage(path: p, name: name, number: n);
       images.add(img);

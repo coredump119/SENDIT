@@ -49,11 +49,30 @@ void main() {
     expect(rowsOf(page).map((r) => r.length).toList(), [4, 3]);
   });
 
-  test('混排：横图占大半行，剩下的位置给竖图', () {
+  test('混排：横图 + 一张竖图同行，不会横图独占一行撑满', () {
     final page = lay.layout([l(1), p(2), p(3), p(4), p(5)]);
     final rows = rowsOf(page);
     expect(rows.length, 2);
-    expect(rows.first.first.number, 1);
+    expect(rows.first.map((e) => e.number).toList(), [1, 2]);
+    expect(rows.first.first.h, lessThan(lay.targetRowHeight * 1.05));
+  });
+
+  test('连续横图：两两一行，不会每张独占一行', () {
+    final page = lay.layout([l(1), l(2), l(3), l(4)]);
+    final rows = rowsOf(page);
+    for (final r in rows) {
+      expect(r.length, greaterThanOrEqualTo(1));
+      expect(r.first.h, lessThanOrEqualTo(lay.targetRowHeight * 1.05));
+    }
+    expect(rows.length, lessThanOrEqualTo(3));
+  });
+
+  test('竖竖方横：不会挤成一行小格子', () {
+    final sq = CollageItem(number: 3, width: 1, height: 1);
+    final page = lay.layout([p(1), p(2), sq, l(4), p(5), p(6)]);
+    for (final r in rowsOf(page)) {
+      expect(r.first.h, greaterThan(lay.targetRowHeight * 0.7), reason: 'row ${r.map((e) => e.number)}');
+    }
   });
 
   test('单张不无限放大', () {

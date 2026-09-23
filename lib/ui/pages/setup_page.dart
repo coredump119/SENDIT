@@ -58,9 +58,10 @@ class _SetupPageState extends State<SetupPage> {
     );
   }
 
-  /// 安卓：应用内相册（系统选择器在 Android ≤12 / 无 GMS 机型上会变成文件浏览器）；其他平台走系统选择
+  /// 手机：应用内相册。安卓的系统选择器在 ≤12 / 无 GMS 机型上会变成文件浏览器；
+  /// iOS 的 image_picker 会并发解码并把每张图重编码成 JPEG，几十张大图时内存爆掉直接闪退。
   Future<void> _pick(AppState s) async {
-    if (AppState.isAndroid) {
+    if (AppState.isMobile) {
       final picked = await GalleryPickerPage.open(context);
       if (picked != null && picked.isNotEmpty) await s.importPicked(picked);
     } else {

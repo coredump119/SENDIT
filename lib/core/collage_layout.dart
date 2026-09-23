@@ -58,74 +58,66 @@ class CollageLayout {
     return pages;
   }
 
-  /// 单页：先定行数，再把图按比例总和均分到各行（线性分割 DP），每行填满宽度。
-  /// 这样不会出现"7 张一行 + 1 张孤零零一行"。
+  /// 单页：等高行排版，行断点用 DP 全局求最优（每页 ≤ 8 张，开销可忽略）。
+  /// 每行整体缩放到填满宽度，行高越接近目标越好；超过目标（图被放大、单张撑满）按 2 倍惩罚。
+  /// 最后一行不拉伸（左对齐，行高 ≤ 目标）。
   CollagePage layout(List<CollageItem> items) {
     final innerW = canvasWidth - margin * 2;
     final out = <Placement>[];
     if (items.isEmpty) return CollagePage(items: out, width: canvasWidth, height: margin * 2 + headerHeight);
 
+    final n = items.length;
     final ratios = items.map((e) => clampRatio(e.ratio)).toList();
-    final total = ratios.fold(0.0, (a, b) => a + b);
-    // 行数：按目标行高取整；同时保证每行不会挤得比 0.8 倍目标行高还矮
-    final byTarget = (total * targetRowHeight / innerW).round();
-    final byMinHeight = (total / (innerW / (targetRowHeight * 0.8))).ceil();
-    final rows = (byTarget > byMinHeight ? byTarget : byMinHeight).clamp(1, items.length);
-    final rowsOf = _partition(ratios, rows);
-
-    var y = margin + headerHeight;
-    var idx = 0;
-    for (final count in rowsOf) {
-      final slice = items.sublist(idx, idx + count);
-      final sum = ratios.sublist(idx, idx + count).fold(0.0, (a, b) => a + b);
-      final gaps = gap * (count - 1);
-      var h = (innerW - gaps) / sum;
-      // 行太少图时不无限放大（最多 1.3 倍目标行高），左对齐
-      final maxH = targetRowHeight * 1.3;
-      if (h > maxH) h = maxH;
-      var x = margin;
-      for (var i = 0; i < count; i++) {
-        final w = h * ratios[idx + i];
-        out.add(Placement(slice[i].number, x, y, w, h));
-        x += w + gap;
-      }
-      y += h + gap;
-      idx += count;
-    }
-    return CollagePage(items: out, width: canvasWidth, height: y - gap + margin);
-  }
-
-  /// 线性分割：把 [weights] 顺序切成 [k] 段，使最大段和最小。返回每段的元素个数。
-  static List<int> _partition(List<double> weights, int k) {
-    final n = weights.length;
-    if (k >= n) return List.filled(n, 1);
     final prefix = List<double>.filled(n + 1, 0);
     for (var i = 0; i < n; i++) {
-      prefix[i + 1] = prefix[i] + weights[i];
+      prefix[i + 1] = prefix[i] + ratios[i];
     }
-    // dp[i][j]: 前 i 个元素分成 j 段的最小最大和；cut[i][j]: 最后一段起点
-    final dp = List.generate(n + 1, (_) => List<double>.filled(k + 1, double.infinity));
-    final cut = List.generate(n + 1, (_) => List<int>.filled(k + 1, 0));
-    dp[0][0] = 0;
-    for (var i = 1; i <= n; i++) {
-      for (var j = 1; j <= k && j <= i; j++) {
-        for (var p = j - 1; p < i; p++) {
-          final cost = dp[p][j - 1] > (prefix[i] - prefix[p]) ? dp[p][j - 1] : (prefix[i] - prefix[p]);
-          if (cost <= dp[i][j]) { // 相同代价时偏向让前面的行更满（4 + 3 而不是 3 + 4）
-            dp[i][j] = cost;
-            cut[i][j] = p;
-          }
+
+    // 行 [i, j) 填满宽度时的行高
+    double rowH(int i, int j) => (innerW - gap * (j - i - 1)) / (prefix[j] - prefix[i]);
+    double cost(double h) {
+      final d = h > targetRowHeight ? (h - targetRowHeight) * 2 : targetRowHeight - h;
+      return d * d;
+    }
+
+    // best[j]：前 j 张的最小代价；cut[j]：最后一行起点
+    final best = List<double>.filled(n + 1, double.infinity);
+    final cut = List<int>.filled(n + 1, 0);
+    best[0] = 0;
+    for (var j = 1; j <= n; j++) {
+      for (var i = j - 1; i >= 0; i--) {
+        final h = rowH(i, j);
+        // 尾行：自然高度不超过目标就不拉伸，代价 0；否则按普通行算
+        final isTail = j == n;
+        final c = (isTail && h >= targetRowHeight) ? 0.0 : cost(h);
+        // 一行最多塞到行高低于 0.45 倍目标为止，再往里塞没意义
+        if (h < targetRowHeight * 0.45 && j - i > 1) break;
+        final total = best[i] + c;
+        if (total < best[j]) {
+          best[j] = total;
+          cut[j] = i;
         }
       }
     }
-    final counts = <int>[];
-    var i = n, j = k;
-    while (j > 0) {
-      final p = cut[i][j];
-      counts.insert(0, i - p);
-      i = p;
-      j--;
+
+    final breaks = <int>[];
+    for (var j = n; j > 0; j = cut[j]) {
+      breaks.insert(0, cut[j]);
     }
-    return counts;
+    var y = margin + headerHeight;
+    for (var r = 0; r < breaks.length; r++) {
+      final i = breaks[r];
+      final j = r + 1 < breaks.length ? breaks[r + 1] : n;
+      var h = rowH(i, j);
+      if (j == n && h > targetRowHeight) h = targetRowHeight; // 尾行不拉伸
+      var x = margin;
+      for (var k = i; k < j; k++) {
+        final w = h * ratios[k];
+        out.add(Placement(items[k].number, x, y, w, h));
+        x += w + gap;
+      }
+      y += h + gap;
+    }
+    return CollagePage(items: out, width: canvasWidth, height: y - gap + margin);
   }
 }

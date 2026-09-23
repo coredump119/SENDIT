@@ -73,6 +73,26 @@ class AppState extends ChangeNotifier {
 
   Allocation? allocation;
 
+  // ---- 拼图设置（会话内沿用） ----
+  int collagePerPage = 8;
+  /// 每行大约几张竖图：3 宽松 / 4 标准 / 5 紧凑
+  int collagePortraitsPerRow = 4;
+  bool collageWatermark = true;
+
+  CollageLayout get collageLayout {
+    const width = 2000.0, margin = 44.0, gap = 28.0;
+    final k = collagePortraitsPerRow;
+    final rowH = (width - margin * 2 - gap * (k - 1)) / (k * 9 / 16);
+    return CollageLayout(canvasWidth: width, margin: margin, gap: gap, targetRowHeight: rowH, maxPerPage: collagePerPage);
+  }
+
+  void setCollage({int? perPage, int? portraitsPerRow, bool? watermark}) {
+    if (perPage != null) collagePerPage = perPage;
+    if (portraitsPerRow != null) collagePortraitsPerRow = portraitsPerRow;
+    if (watermark != null) collageWatermark = watermark;
+    notifyListeners();
+  }
+
   // ---- 轮次 ----
   int round = 1;
   /// 前几轮锁定的号：n -> (人名, 轮次)

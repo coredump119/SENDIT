@@ -204,7 +204,7 @@ class _Footer extends StatelessWidget {
       Stage.export => false,
     };
     final hint = switch (s.stage) {
-      Stage.images => s.textOnly ? '无图 · 编号 1–${s.maxNumber}' : (s.images == null ? '等待图片或填编号总数' : (s.imagesReady ? '${s.maxNumber} 个编号就绪' : '编号有冲突')),
+      Stage.images => s.textOnly ? '无图 · 编号 1–${s.maxNumber}' : (s.images == null ? '等待图片或填编号总数' : (s.imagesReady ? '${s.maxNumber} 个编号就绪' : (s.images!.byNumber.isEmpty ? '没有识别到编号，试试"按顺序"' : '编号有冲突'))),
       Stage.chat => s.messages.isEmpty ? '等待粘贴' : (s.resultReady ? '已解析 ${s.messages.length} 条' : '缺少编号范围'),
       Stage.result => s.allocation == null ? '' : '${s.allocation!.people.length} 人 · 未认领 ${s.allocation!.unclaimed.length}',
       Stage.export => s.exportSummary != null || s.zipDone ? '完成' : (s.saved.isEmpty ? '' : '已保存 ${s.saved.length} 人'),

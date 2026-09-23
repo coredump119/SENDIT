@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/widgets.dart';
 import 'package:gal/gal.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 
 import '../core/core.dart';
@@ -36,18 +35,12 @@ Future<List<PickedImage>> listFolder(String dir) async {
 }
 
 Future<List<PickedImage>> pickImages({void Function(int done, int total)? onProgress}) async {
-  final List<XFile> files;
   if (isMobile) {
-    // requestFullMetadata=false：不去查相册元数据，选大批图明显更快，也不额外要权限
-    files = await ImagePicker().pickMultiImage(requestFullMetadata: false);
-    onProgress?.call(0, files.length);
-    // 选择器给的是临时副本，修改时间没有意义，跳过 stat
-    return [for (final f in files) PickedImage(id: f.path, name: f.name)];
-  } else {
-    files = await openFiles(acceptedTypeGroups: [
-      XTypeGroup(label: '图片', extensions: ImageIndexer.extensions.toList()),
-    ]);
+    throw UnsupportedError('手机端请使用应用内相册（GalleryPickerPage）');
   }
+  final files = await openFiles(acceptedTypeGroups: [
+    XTypeGroup(label: '图片', extensions: ImageIndexer.extensions.toList()),
+  ]);
   final out = <PickedImage>[];
   for (var i = 0; i < files.length; i++) {
     out.add(await _picked(files[i].path));

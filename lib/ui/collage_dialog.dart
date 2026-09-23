@@ -33,38 +33,86 @@ class _CollageDialog extends StatefulWidget {
 
 class _CollageDialogState extends State<_CollageDialog> {
   List<Uint8List>? _pages;
-  bool _watermark = true;
+  CollageSource? _src;
   int _done = 0;
   String? _error;
   bool _saving = false;
   String? _savedNote;
+  int _renderSeq = 0;
 
   @override
   void initState() {
     super.initState();
-    _run();
+    _prepareAndRender();
   }
 
-  Future<void> _run() async {
-    setState(() {
-      _pages = null;
-      _done = 0;
-      _savedNote = null;
-    });
+  Future<void> _prepareAndRender() async {
     try {
-      final pages = await const CollageBuilder().build(
+      _src = await const CollageBuilder().prepare(
         images: widget.s.images!,
         numbers: widget.numbers,
-        title: widget.title,
-        watermark: _watermark,
         onProgress: (d, _) {
           if (mounted) setState(() => _done = d);
         },
       );
-      if (mounted) setState(() => _pages = pages);
+      await _render();
     } catch (e) {
       if (mounted) setState(() => _error = '$e');
     }
+  }
+
+  /// 改设置只重排 + 重画，不重新读图；连续点击时只保留最后一次
+  Future<void> _render() async {
+    final src = _src;
+    if (src == null) return;
+    final seq = ++_renderSeq;
+    setState(() {
+      _pages = null;
+      _savedNote = null;
+    });
+    try {
+      final s = widget.s;
+      final pages = await CollageBuilder(layout: s.collageLayout).render(src, title: widget.title, watermark: s.collageWatermark);
+      if (mounted && seq == _renderSeq) setState(() => _pages = pages);
+    } catch (e) {
+      if (mounted) setState(() => _error = '$e');
+    }
+  }
+
+  Widget _settings() {
+    final s = widget.s;
+    final ready = _src != null;
+    return Wrap(
+      spacing: 14,
+      runSpacing: 10,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Field(
+          label: '每页',
+          child: Segmented<int>(
+            value: s.collagePerPage,
+            onChanged: ready ? (v) { s.setCollage(perPage: v); _render(); } : (_) {},
+            items: const [(4, '4'), (6, '6'), (8, '8'), (12, '12')],
+          ),
+        ),
+        Field(
+          label: '每行',
+          child: Segmented<int>(
+            value: s.collagePortraitsPerRow,
+            onChanged: ready ? (v) { s.setCollage(portraitsPerRow: v); _render(); } : (_) {},
+            items: const [(3, '宽松'), (4, '标准'), (5, '紧凑')],
+          ),
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Check(value: s.collageWatermark, onChanged: ready ? (v) { s.setCollage(watermark: v); _render(); } : (_) {}),
+            const SizedBox(width: 8),
+            Text('防盗纹', style: Tone.body),
+          ],
+        ),
+      ],
+    );
   }
 
   Future<void> _save() async {
@@ -119,6 +167,8 @@ class _CollageDialogState extends State<_CollageDialog> {
                 ],
               ),
               const SizedBox(height: 10),
+              _settings(),
+              const SizedBox(height: 12),
               Flexible(
                 child: _error != null
                     ? Text(_error!, style: Tone.body.copyWith(color: Tone.moss))
@@ -130,7 +180,7 @@ class _CollageDialogState extends State<_CollageDialog> {
                               children: [
                                 const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)),
                                 const SizedBox(height: 12),
-                                Text('正在读取 $_done / ${widget.numbers.length}…', style: Tone.bodySoft),
+                                Text(_src == null ? '正在读取 $_done / ${widget.numbers.length}…' : '正在排版…', style: Tone.bodySoft),
                               ],
                             ),
                           )
@@ -147,18 +197,6 @@ class _CollageDialogState extends State<_CollageDialog> {
               const SizedBox(height: 14),
               Row(
                 children: [
-                  Check(
-                    value: _watermark,
-                    onChanged: pages == null
-                        ? (_) {}
-                        : (v) {
-                            setState(() => _watermark = v);
-                            _run();
-                          },
-                  ),
-                  const SizedBox(width: 8),
-                  Text('斜线防盗纹', style: Tone.body),
-                  const SizedBox(width: 16),
                   if (_savedNote != null) Expanded(child: Text(_savedNote!, style: Tone.bodySoft)) else const Spacer(),
                   SoftButton(label: '关闭', small: true, onPressed: () => Navigator.of(context).pop()),
                   const SizedBox(width: 8),

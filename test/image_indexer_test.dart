@@ -35,4 +35,17 @@ void main() {
     expect(r.missing, isEmpty);
     expect(r.maxNumber, 3);
   });
+
+  test('sequential：名字没有扩展名（iOS 相册 title）也要计入', () {
+    const ix = ImageIndexer(rule: NumberRule.sequential);
+    final r = ix.index(['/tmp/a', '/tmp/b', '/tmp/c'], nameOf: (p) => p.split('/').last);
+    expect(r.byNumber.length, 3);
+    expect(r.ok, isTrue);
+  });
+
+  test('文件名模式仍然过滤非图片', () {
+    const ix = ImageIndexer();
+    final r = ix.index(['/d/1.png', '/d/readme.txt']);
+    expect(r.images.length, 1);
+  });
 }
