@@ -23,8 +23,14 @@ class ChatImporter {
       RegExp(r'^\s*(.+?)\s{1,}(\d{1,2}):(\d{2})(?::(\d{2}))?\s*$');
   static final _colonLine = RegExp(r'^\s*([^:：]{1,40})[:：]\s*(.*)$');
 
+  /// 格式 D：昵称和完整时间在同一行，内容在下一行
+  /// `若鱼🍀Wendy 2026/09/23 10:00 PM` / `晨 2026-09-23 上午9:05`
+  static final _inlineHeader = RegExp(
+      r'^\s*(.+?)\s+(\d{4}[/\-.年]\d{1,2}[/\-.月]\d{1,2}日?\s+(?:上午|下午|凌晨|中午|晚上|AM|PM|am|pm)?\s*\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|am|pm)?)\s*$');
+
   List<RawMessage> import(String text) {
     final lines = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n');
+    if (lines.any((l) => _inlineHeader.hasMatch(l))) return _parseD(lines);
     if (lines.any((l) => _fullTime.hasMatch(l))) return _parseA(lines);
     if (lines.where((l) => _nameTimeLine.hasMatch(l)).length >= 2) {
       return _parseB(lines);
@@ -53,6 +59,33 @@ class ChatImporter {
         text: content,
       ));
     }
+    return out;
+  }
+
+  /// 格式 D：`昵称 完整时间` 一行 + 内容行（到下一个头部为止）
+  List<RawMessage> _parseD(List<String> lines) {
+    final out = <RawMessage>[];
+    String? sender;
+    DateTime? time;
+    final buf = <String>[];
+    void flush() {
+      if (sender != null) {
+        out.add(RawMessage(sender: sender, time: time, order: out.length, text: _trimBlank(buf).join('\n')));
+      }
+      buf.clear();
+    }
+
+    for (final l in lines) {
+      final m = _inlineHeader.firstMatch(l);
+      if (m != null) {
+        flush();
+        sender = m[1]!.trim();
+        time = _parseFullTime(m[2]!);
+      } else {
+        buf.add(l);
+      }
+    }
+    flush();
     return out;
   }
 

@@ -85,6 +85,30 @@ R.
     expect(ms[0].text, '4 5 33');
   });
 
+  test('格式 D：昵称和时间同一行（桌面微信）', () {
+    final ms = imp.import('''₍^·༝·^*₎ﾉ 2026/09/23 9:59 PM
+4 5 33 36 38 39
+
+若鱼🍀Wendy 2026/09/23 10:00 PM
+39 18 21 22 33
+
+远.. 2026/09/23 10:00 PM
+33/34
+
+晨 2026-09-23 上午9:05
+1
+还有 2''');
+    expect(ms.length, 4);
+    expect(ms[0].sender, '₍^·༝·^*₎ﾉ');
+    expect(ms[0].time, DateTime(2026, 9, 23, 21, 59));
+    expect(ms[0].text, '4 5 33 36 38 39');
+    expect(ms[1].sender, '若鱼🍀Wendy');
+    expect(ms[1].time, DateTime(2026, 9, 23, 22, 0));
+    expect(ms[2].sender, '远..');
+    expect(ms[3].time, DateTime(2026, 9, 23, 9, 5));
+    expect(ms[3].text, '1\n还有 2');
+  });
+
   test('格式 A：多行内容', () {
     final ms = imp.import('''张三
 2026/09/01 10:00
