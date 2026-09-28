@@ -16,8 +16,9 @@ import 'models.dart';
 /// B. 桌面端常见「昵称  14:32」一行 + 内容行
 /// C. 手写「昵称: 内容」每行一条
 class ChatImporter {
+  /// 2026/08/30 21:59 · 2026/9/23 9:59 PM · 2026-09-23 上午9:59 · 2026年9月23日 下午10:00
   static final _fullTime = RegExp(
-      r'^\s*(\d{4})[/\-.年](\d{1,2})[/\-.月](\d{1,2})日?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*$');
+      r'^\s*(\d{4})[/\-.年](\d{1,2})[/\-.月](\d{1,2})日?\s+(上午|下午|凌晨|中午|晚上|AM|PM|am|pm)?\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?\s*$');
   static final _nameTimeLine =
       RegExp(r'^\s*(.+?)\s{1,}(\d{1,2}):(\d{2})(?::(\d{2}))?\s*$');
   static final _colonLine = RegExp(r'^\s*([^:：]{1,40})[:：]\s*(.*)$');
@@ -107,13 +108,19 @@ class ChatImporter {
   static DateTime? _parseFullTime(String s) {
     final m = _fullTime.firstMatch(s);
     if (m == null) return null;
+    var hour = int.parse(m[5]!);
+    final marker = (m[4] ?? m[8] ?? '').toUpperCase();
+    final pm = marker == 'PM' || marker == '下午' || marker == '晚上';
+    final am = marker == 'AM' || marker == '上午' || marker == '凌晨';
+    if (pm && hour < 12) hour += 12;
+    if (am && hour == 12) hour = 0;
     return DateTime(
       int.parse(m[1]!),
       int.parse(m[2]!),
       int.parse(m[3]!),
-      int.parse(m[4]!),
-      int.parse(m[5]!),
-      int.parse(m[6] ?? '0'),
+      hour,
+      int.parse(m[6]!),
+      int.parse(m[7] ?? '0'),
     );
   }
 

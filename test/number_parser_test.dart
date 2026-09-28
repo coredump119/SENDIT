@@ -70,6 +70,11 @@ void main() {
   group('需人工确认', () {
     test('长句夹数字', () =>
         expect(p.parse(msg('这个 3 真好看，我要 5')).status, ParseStatus.ambiguous));
+    test('很长的纯号码列表不算待确认', () {
+      expect(p.parse(msg('19 25 27 29 31 32 45 47 48 50 51 52')).status, ParseStatus.ok);
+      expect(p.parse(msg('1, 2, 3, 13, 14, 15, 17, 25, 28, 32, 33, 37, 39, 40, 45, 47, 48, 53, 55, 56, 58, 60, 61')).status, ParseStatus.ok);
+      expect(p.parse(msg('1/2/5/7/28/35/38/39/41/42/44/62/69')).status, ParseStatus.ok);
+    });
     test('礼貌用语不算闲聊', () {
       expect(p.parse(msg('扣7 谢谢老师')).status, ParseStatus.ok);
       expect(p.parse(msg('1 3 5 麻烦老师了')).status, ParseStatus.ok);

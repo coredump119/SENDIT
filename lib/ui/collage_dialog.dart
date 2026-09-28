@@ -103,13 +103,13 @@ class _CollageDialogState extends State<_CollageDialog> {
             items: const [(3, '宽松'), (4, '标准'), (5, '紧凑')],
           ),
         ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Check(value: s.collageWatermark, onChanged: ready ? (v) { s.setCollage(watermark: v); _render(); } : (_) {}),
-            const SizedBox(width: 8),
-            Text('防盗纹', style: Tone.body),
-          ],
+        Field(
+          label: '防盗纹',
+          child: Segmented<bool>(
+            value: s.collageWatermark,
+            onChanged: ready ? (v) { s.setCollage(watermark: v); _render(); } : (_) {},
+            items: const [(true, '开'), (false, '关')],
+          ),
         ),
       ],
     );

@@ -60,6 +60,31 @@ void main() {
     expect(ms.map((m) => m.order).toList(), List.generate(10, (i) => i));
   });
 
+  test('格式 A：12 小时制 AM/PM 与中文上午/下午', () {
+    final ms = imp.import('''₍^·༝·^*₎ﾉ 
+2026/09/23 9:59 PM
+4 5 33
+
+若鱼🍀Wendy 
+2026/09/23 10:00 PM
+39 18
+
+晨
+2026/9/23 上午9:05
+1
+
+R.
+2026/09/23 12:10 AM
+2''');
+    expect(ms.length, 4);
+    expect(ms[0].sender, '₍^·༝·^*₎ﾉ');
+    expect(ms[0].time, DateTime(2026, 9, 23, 21, 59));
+    expect(ms[1].time, DateTime(2026, 9, 23, 22, 0));
+    expect(ms[2].time, DateTime(2026, 9, 23, 9, 5));
+    expect(ms[3].time, DateTime(2026, 9, 23, 0, 10));
+    expect(ms[0].text, '4 5 33');
+  });
+
   test('格式 A：多行内容', () {
     final ms = imp.import('''张三
 2026/09/01 10:00

@@ -114,7 +114,8 @@ class NumberParser {
 
     // 6. 闲聊量判断
     final residual = _residualText(text);
-    final ambiguous = residual.length >= 3 || raw.text.length > 30;
+    // 只看去掉数字、标点、常见扣号用语后剩下的文字量；纯号码列表再长也不算待确认
+    final ambiguous = residual.length >= 3;
 
     return ParsedMessage(
       raw: raw,
